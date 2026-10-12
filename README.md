@@ -19,7 +19,7 @@ the Ravenrest map, by Raven Iron.
   on ground a map maker marked, such as roads and lake beds. Tarn uses vanilla's own clear areas, the same ones that keep trees out of locations. Only what
   would have stood on a marked spot is removed; everything else is placed exactly as vanilla places it.
 - **Lake beds (0.4.0).** Every lake's bed is kept clear the same way, from the lake list alone, with no `.clear` file:
-  the ground under the water and about 4 m past the waterline. That includes lakes made with `tarn here`. Only zones
+  the ground under the water, and a little past its edge (`Clearing.LakeBedShore`). That includes lakes made with `tarn here`. Only zones
   generated after the lake exists are affected, so a lake made on explored ground keeps the trees already standing in
   it. In multiplayer, the server's `Clearing.LakeBeds` setting applies to everyone.
   For a lake made on explored ground, `tarn clearbeds` removes what already stands on its bed (see Commands).
@@ -39,8 +39,9 @@ the Ravenrest map, by Raven Iron.
 
 - `tarn here [radius] [margin]`: fill the hollow you're standing in, up to just under its spill point.
 - `tarn list [n]`: the nearest lakes, and whether they're built.
-- `tarn depth [scale]`: how deep lakes look (colour, foam, waves). Applies live.
-- `tarn reload`: re-read this world's lake file on the server.
+- `tarn depth [scale]`: how deep lakes look (colour, foam, waves). Applies live; on a server it's the server's
+  setting, so a player's `tarn depth <value>` is sent there (admins only) and reaches everyone.
+- `tarn reload`: re-read this world's lake file and Tarn's config on the server.
 - `tarn clearbeds <lake|all>`: count the trees, rocks, bushes and pickables already standing on lake beds in explored
   ground. Add `confirm` to remove them, which can't be undone. Only vanilla vegetation goes, never anything a player
   built. A tree grown from a planted sapling looks the same as a wild one, so it goes too if it stands on a bed.
@@ -50,6 +51,10 @@ On a server, changing commands need the player to be on `adminlist.txt`.
 
 ## Config
 
+On a server, every setting is the server's: players get them on joining and whenever they change (an admin's `tarn`
+command, a config manager, or the server's `.cfg` edited, which is noticed within seconds). A player's own file is
+used again in single player.
+
 | Setting | Default | What it does |
 |---|---|---|
 | `Look.DepthScale` | 0.5 | How deep lakes look. |
@@ -57,6 +62,7 @@ On a server, changing commands need the player to be on `adminlist.txt`.
 | `Performance.BuildRange` | 400 | Lakes within this many metres are built. |
 | `Performance.BuildBudgetMs` | 2 | Milliseconds per frame spent building lakes (and shaping nearby lake beds ahead of zone generation). |
 | `Clearing.LakeBeds` | true | Keep vegetation off every lake's bed. In multiplayer, the server's setting applies. |
+| `Clearing.LakeBedShore` | 2 | How far past the water's edge lake-bed clearing reaches, in metres (0 to 10). Lakes are sampled every 4 m, so at 2 the cleared edge lands 0 to 4 m past the real waterline. At 0, a bush may still stand in the shallows. In multiplayer, the server's setting applies. |
 
 ## Notes
 

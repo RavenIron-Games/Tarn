@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace RavenIron.Tarn
 {
@@ -14,16 +15,17 @@ namespace RavenIron.Tarn
     /// list in memory only and never reads its own file while connected, so a stale local copy cannot disagree with the
     /// server. A headless server builds no water: nothing there is drawn, and nothing it simulates stands in a lake.
     ///
-    /// Wire: ZPackage { int protocol, string tarnVersion, string world, int count, count x string lakeLine, bool lakeBeds }.
+    /// Wire: ZPackage { int protocol, string tarnVersion, string world, int count, count x string lakeLine, bool lakeBeds, float lakeBedShore }.
     /// lakeBeds (0.4.0) is the server's Clearing.LakeBeds, appended rather than a new protocol: a 0.3.0 client stops
     /// reading before it, and a 0.4.0 client finds the package ends there when the server is older (then no bed clearing,
-    /// because the server never chose it).
+    /// because the server never chose it). lakeBedShore (0.4.1) follows the same way; a 0.4.0 server's is its fixed 2 m.
     /// </summary>
     internal static class LakeSync
     {
         internal const string RequestRpc = "com.raveniron.tarn.request";
         internal const string LakesRpc = "com.raveniron.tarn.lakes";
         private const int Protocol = 1;
+        internal const float MaxShore = 10f;
         private const float AskEvery = 4f;
         private const int GiveUpAfter = 15;               // ~1 minute
 
@@ -32,13 +34,20 @@ namespace RavenIron.Tarn
         private static int _asks;
         private static bool _answered, _gaveUp, _warnedVersion;
         private static bool _serverLakeBeds;
+        private const float ShoreBefore041 = 2f;          // what 0.4.0 cleared, fixed, before it was a setting
+        private static float _serverShore = ShoreBefore041;
 
         internal static bool IsAuthority => ZNet.instance != null && ZNet.instance.IsServer();
         internal static bool Answered => _answered;
         internal static bool GaveUp => _gaveUp;
 
         /// <summary>Whether lake beds are kept clear here: the authority's own setting, or what the server sent.</summary>
-        internal static bool LakeBedsOn => IsAuthority ? Plugin.ClearLakeBeds.Value : _answered && _serverLakeBeds;
+        internal static bool LakeBedsOn => IsAuthority ? Plugin.ClearLakeBeds.Value
+            : ConfigSync.HasServer(Plugin.ClearLakeBeds) ? _answered && ConfigSync.Get(Plugin.ClearLakeBeds)
+            : _answered && _serverLakeBeds;               // a 0.4.0 / 0.4.1 server: what its lake message carried
+
+        /// <summary>How far past the water's edge lake beds are cleared: the authority's own setting, or the server's.</summary>
+        internal static float LakeBedShore => IsAuthority || ConfigSync.HasServer(Plugin.LakeBedShore) ? ConfigSync.Get(Plugin.LakeBedShore) : _serverShore;
 
         /// <summary>Called every frame from Plugin.Update while a world is up.</summary>
         internal static void Tick(float dt)
@@ -55,6 +64,7 @@ namespace RavenIron.Tarn
                 catch (Exception ex) { Plugin.Log.LogWarning($"lake sync: register failed: {ex.Message}"); }
                 _registeredOn = rpc;
                 _answered = _gaveUp = _warnedVersion = _serverLakeBeds = false;
+                _serverShore = ShoreBefore041;
                 _asks = 0; _sinceAsk = AskEvery;
             }
             if (IsAuthority || _answered || _gaveUp) return;
@@ -83,6 +93,7 @@ namespace RavenIron.Tarn
             pkg.Write(lines.Count);
             foreach (var s in lines) pkg.Write(s);
             pkg.Write(Plugin.ClearLakeBeds.Value);
+            pkg.Write(Plugin.LakeBedShore.Value);
             return pkg;
         }
 
@@ -100,6 +111,7 @@ namespace RavenIron.Tarn
             if (!IsAuthority) return;
             try
             {
+                ConfigSync.SendTo(sender);                 // the settings first: the lake-bed ones apply to these lakes
                 var lakes = Plugin.CurrentLakes();
                 ZRoutedRpc.instance.InvokeRoutedRPC(sender, LakesRpc, Pack(lakes));
                 Plugin.Log.LogInfo($"lake sync: sent {lakes.Count} lake(s) to peer {sender}");
@@ -128,6 +140,7 @@ namespace RavenIron.Tarn
                     if (l != null) lakes.Add(l);
                 }
                 bool beds = pkg.GetPos() < pkg.Size() && pkg.ReadBool();   // absent from a server older than 0.4.0
+                float shore = pkg.GetPos() < pkg.Size() ? pkg.ReadSingle() : ShoreBefore041;   // absent before 0.4.1
                 if (version != Plugin.Version && !_warnedVersion)
                 {
                     _warnedVersion = true;
@@ -135,8 +148,9 @@ namespace RavenIron.Tarn
                 }
                 bool first = !_answered;
                 _serverLakeBeds = beds;
+                _serverShore = Mathf.Clamp(shore, 0f, MaxShore);
                 _answered = true;
-                Plugin.ReplaceLakes(lakes, $"the server ({world}), lake beds {(beds ? "kept clear" : "not cleared")}");
+                Plugin.ReplaceLakes(lakes, $"the server ({world}), lake beds {(beds ? $"kept clear to {_serverShore:0.#} m past the water" : "not cleared")}");
                 if (!first) Plugin.Notify($"Tarn: the server changed its lakes ({lakes.Count})");
             }
             catch (Exception ex) { Plugin.Log.LogWarning($"lake sync: reading the server's lakes failed: {ex.Message}"); }

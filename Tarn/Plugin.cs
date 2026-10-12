@@ -34,7 +34,7 @@ namespace RavenIron.Tarn
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.raveniron.tarn";
-        public const string Version = "0.4.0";
+        public const string Version = "0.4.1";
         internal static ManualLogSource Log;
         private static readonly CultureInfo C = CultureInfo.InvariantCulture;
 
@@ -43,6 +43,7 @@ namespace RavenIron.Tarn
         internal static ConfigEntry<float> BuildRange;
         internal static ConfigEntry<float> BudgetMs;
         internal static ConfigEntry<bool> ClearLakeBeds;
+        internal static ConfigEntry<float> LakeBedShore;
 
         private static ZoneSystem _loadedFor;
         private static readonly List<LakeRt> Lakes = new List<LakeRt>();
@@ -102,6 +103,12 @@ namespace RavenIron.Tarn
                 "Keep trees, rocks, bushes and pickable debris off every lake's bed (the ground under its water, to the shore), " +
                 "including lakes made with `tarn here`. Only zones generated after a lake exists are affected. In multiplayer " +
                 "the SERVER's setting applies to everyone (it is sent with the lakes).");
+            LakeBedShore = Config.Bind("Clearing", "LakeBedShore", 2f,
+                new ConfigDescription("How far past the water's edge lake-bed clearing reaches, in metres. A lake's shape is sampled every 4 m, " +
+                    "so the edge it knows is good to about 2 m: at 0 a little may still stand in the shallows, at the default 2 nothing does. " +
+                    "Also what `tarn clearbeds` removes. In multiplayer the SERVER's setting applies to everyone.",
+                    new AcceptableValueRange<float>(0f, LakeSync.MaxShore)));
+            ConfigSync.Init(Config, DepthScale, SoundVolume, BuildRange, BudgetMs, ClearLakeBeds, LakeBedShore);
             new Harmony(Guid).PatchAll(typeof(Plugin).Assembly);
             Log.LogInfo($"Tarn {Version} (prototype) loaded");
         }
@@ -122,16 +129,17 @@ namespace RavenIron.Tarn
                     try
                     {
                         Lakes.AddRange(LoadLakes().Select(l => new LakeRt { L = l }));
-                        Log.LogInfo($"world '{WorldName()}': {Lakes.Count} lake(s) from {LakeFile()}, lake beds {(ClearLakeBeds.Value ? "kept clear" : "not cleared")}" +
+                        Log.LogInfo($"world '{WorldName()}': {Lakes.Count} lake(s) from {LakeFile()}, lake beds {(ClearLakeBeds.Value ? $"kept clear to {LakeBedShore.Value:0.#} m past the water" : "not cleared")}" +
                                     (ZNet.instance.IsDedicated() ? " (dedicated server: sent to players, no water built here)" : ""));
                     }
                     catch (Exception ex) { Log.LogError($"loading lakes failed: {ex}"); }
                 }
                 else Log.LogInfo("joined a server: waiting for its lakes");
             }
+            ConfigSync.Tick(Time.deltaTime);
             LakeSync.Tick(Time.deltaTime);
             ClearSync.Tick(Time.deltaTime);
-            ClearBeds.Tick(BudgetMs.Value);
+            ClearBeds.Tick(ConfigSync.Get(BudgetMs));
             if (MapLakes.Dirty && _loadedFor == zs && Minimap.instance != null)
             {
                 MapLakes.Dirty = false;
@@ -142,7 +150,7 @@ namespace RavenIron.Tarn
             {
                 var sw = Stopwatch.StartNew();
                 bool done;
-                try { done = _building.Step(sw, BudgetMs.Value); }
+                try { done = _building.Step(sw, ConfigSync.Get(BudgetMs)); }
                 catch (Exception ex)
                 {
                     Log.LogError($"building lake '{_building.Rt.L.Name}' failed: {ex}");
@@ -152,14 +160,14 @@ namespace RavenIron.Tarn
             }
             else
             {
-                try { LakeBeds.Warm(Time.deltaTime, BudgetMs.Value); }
+                try { LakeBeds.Warm(Time.deltaTime, ConfigSync.Get(BudgetMs)); }
                 catch (Exception ex) { Log.LogWarning($"lake beds: shaping ahead failed: {ex.Message}"); LakeBeds.Reset(); }
             }
             _streamTimer += Time.deltaTime;
             if (_streamTimer < 0.5f) return;
             _streamTimer = 0f;
             if (!ListenerPosition(out var at)) return;      // a dedicated server draws nothing (sync comes later)
-            float build = BuildRange.Value, drop = build + 150f;
+            float build = ConfigSync.Get(BuildRange), drop = build + 150f;
             foreach (var rt in Lakes)
                 if (rt.Built && rt.Failed == null && rt.DistanceTo(at) > drop && _building?.Rt != rt) Drop(rt);
             if (_building == null)
@@ -371,6 +379,7 @@ namespace RavenIron.Tarn
         internal static string Reload()
         {
             if (Forward("tarn reload", out var fwd)) return fwd;
+            ConfigSync.ReloadFile("tarn reload");             // the settings too: any change reaches every player
             var shapes = KeptShapes();
             foreach (var rt in Lakes) Drop(rt);
             Lakes.Clear(); _building = null;
@@ -422,11 +431,15 @@ namespace RavenIron.Tarn
                             case "depth":
                                 if (args.Args.Length > 2)
                                 {
-                                    Plugin.DepthScale.Value = float.Parse(args.Args[2], c);
+                                    float v = float.Parse(args.Args[2], c);
+                                    // a server's setting: a player sends it there (admins only), and it comes back to everyone
+                                    if (Plugin.Forward(string.Format(c, "tarn depth {0:0.###}", v), out var fwdDepth)) { args.Context.AddString(fwdDepth); return; }
+                                    Plugin.DepthScale.Value = v;
                                     int n = Plugin.Reapply();
-                                    args.Context.AddString($"depth scale {Plugin.DepthScale.Value:0.##} (saved), {n} lake volume(s) updated");
+                                    args.Context.AddString($"depth scale {Plugin.DepthScale.Value:0.##} (saved, sent to every player), {n} lake volume(s) updated");
                                 }
-                                else args.Context.AddString($"depth scale {Plugin.DepthScale.Value:0.##}: the water shader sees each lake at that share of its real depth " +
+                                else args.Context.AddString($"depth scale {ConfigSync.Get(Plugin.DepthScale):0.##}" +
+                                                            (ConfigSync.HasServer(Plugin.DepthScale) ? " (the server's)" : "") + ": the water shader sees each lake at that share of its real depth " +
                                                             "(colour, foam and waves reach full at 10 m). Try 0.2 (calm, green) to 1 (sea-like). tarn depth <value>");
                                 return;
                             case "list": args.Context.AddString(Plugin.List(args.Args.Length > 2 ? int.Parse(args.Args[2], c) : 10)); return;

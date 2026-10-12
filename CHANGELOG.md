@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.1 (2026-10-12)
+
+- **How far lake-bed clearing reaches past the water is a setting now:** `Clearing.LakeBedShore`, in metres. The
+  default is 2, the same as 0.4.0.
+  - A lake's shape is sampled every 4 m, so at the default the cleared edge lands 0 to 4 m past the real waterline,
+    about 2 m on average.
+  - Lower it for less bare shore. At 0, a bush can still stand in the shallows here and there.
+  - `tarn clearbeds` uses the same distance.
+  - In multiplayer, the server's value applies to everyone; it's sent with the lakes. A 0.4.0 server counts as 2.
+- **Every setting follows the server.** The server sends all of Tarn's settings to each player who joins, and again
+  to everyone whenever one changes. While connected, a player's game uses the server's values in memory only; their
+  own config file is untouched, so their settings are back in single player. A setting changes on the server when:
+  - an admin runs a `tarn` command. `tarn depth` from a player now goes to the server, admins only, and comes back to
+    everyone.
+  - a config-manager mod changes it.
+  - the server's `.cfg` file is edited. The server notices within a few seconds, and `tarn reload` re-reads it at once.
+  - A 0.4.0 server sends no settings, so players keep their own (and its lake message's lake-bed values).
+- **The store page links to the source** on GitHub.
+
 ## 0.4.0 (2026-10-11)
 
 - **Lake beds are kept clear on their own.** No trees, rocks, bushes or pickable debris are placed on a lake's bed,

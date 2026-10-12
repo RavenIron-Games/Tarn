@@ -26,10 +26,10 @@ namespace RavenIron.Tarn
     {
         private const float Reach = 32f;      // vanilla places a zone's vegetation within its own 64 m square
         // Each wet cell is a 4 m sample; its own square is +-2 m, and the shoreline lies somewhere between it and the
-        // next (dry) sample, so the cleared ground reaches that sample: 2 m more.
-        private const float Shore = 2f;
+        // next (dry) sample. Shore (config Clearing.LakeBedShore, the server's value in multiplayer) is how much further
+        // the cleared ground reaches: the default 2 m reaches that next sample, as 0.4.0 did; 0 stops halfway to it.
         private const float SlowMs = 20f;
-        internal const float Pad = LakeShape.Step / 2f + Shore;   // each wet cell is cleared this far from its centre, both axes
+        internal static float Pad => LakeShape.Step / 2f + LakeSync.LakeBedShore;   // each wet cell is cleared this far from its centre, both axes
         // Lakes within this of a player are shaped ahead of time. Vanilla generates zones up to a few zones out (the
         // server's ghost zones reach furthest), so this is comfortably beyond the generation front.
         private const float WarmRange = 640f;

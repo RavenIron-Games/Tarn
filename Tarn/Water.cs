@@ -50,7 +50,7 @@ namespace RavenIron.Tarn
         internal static bool Apply(WaterVolume wv, float[] metres)
         {
             if (!Resolve()) return false;
-            float k = Plugin.DepthScale.Value / 10f;          // vanilla: depth / 10 m, clamped
+            float k = ConfigSync.Get(Plugin.DepthScale) / 10f;          // vanilla: depth / 10 m, clamped
             var a = _norm(wv);
             for (int i = 0; i < 4; i++) a[i] = Mathf.Clamp01(metres[i] * k);
             _one(wv) = -1f;                                    // per-corner, never the single-depth shortcut
@@ -100,7 +100,7 @@ namespace RavenIron.Tarn
             try
             {
                 var am = AudioMan.instance;
-                if (am == null || Plugin.Tiles.Count == 0 || Plugin.SoundVolume.Value <= 0f)
+                if (am == null || Plugin.Tiles.Count == 0 || ConfigSync.Get(Plugin.SoundVolume) <= 0f)
                 {
                     if (_src != null) _src.volume = Mathf.MoveTowards(_src.volume, 0f, 0.2f * dt);
                     return;
@@ -133,7 +133,7 @@ namespace RavenIron.Tarn
                     _near = best < 80f * 80f;
                 }
                 float wind = EnvMan.instance != null ? EnvMan.instance.GetWindIntensity() : 0.5f;
-                float goal = _near ? Plugin.SoundVolume.Value * Mathf.Lerp(0.4f, 1f, wind) : 0f;
+                float goal = _near ? ConfigSync.Get(Plugin.SoundVolume) * Mathf.Lerp(0.4f, 1f, wind) : 0f;
                 _src.volume = Mathf.MoveTowards(_src.volume, goal, 0.15f * dt);
                 _src.transform.position = Vector3.Lerp(_src.transform.position, _target, 0.1f);
             }

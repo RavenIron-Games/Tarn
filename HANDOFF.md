@@ -1,4 +1,4 @@
-# Tarn: AI handoff (2026-10-11, version 0.4.0)
+# Tarn: AI handoff (2026-10-12, version 0.4.1)
 
 Read this before touching Tarn. It covers what the mod is, how it is built and shipped, what has been proven in game,
 the traps already hit, and what is still open.
@@ -34,6 +34,7 @@ since 2026-10-11. The branch is `main`, with a tag per release (`v0.4.0` first).
 | `Tarn\LakeShape.cs` | One lake's shape: generator heights every 4 m over its box, and the flood (wet cells, mask). Shared by the builder and the lake beds. |
 | `Tarn\LakeBuilder.cs` | Builds one lake from its shape: tiles and boxes. |
 | `Tarn\ClearBeds.cs` | `tarn clearbeds <lake|all> [confirm]`: counts, then removes, the vegetation ZDOs ALREADY on lake beds. A job on the authority, with its own admin-checked routed RPC that answers the requester. |
+| `Tarn\ConfigSync.cs` | Every setting follows the authority's (0.4.1): sent on join and on any change, held in memory on the player's side, read through `ConfigSync.Get`. |
 | `Tarn\LakeBeds.cs` | Clears lake beds: wet cells near a zone become rectangles, then vanilla square clear areas. Also shapes lakes near players ahead of time, on a per-frame budget. |
 | `Tarn\Water.cs` | Vanilla water templates and the swim-box handling. |
 | `Tarn\Spill.cs` | The spill-point flood behind `tarn here`. |
@@ -115,7 +116,10 @@ dotnet build Tarn\Tarn.csproj          # Debug -> Tarn\bin\Debug\Tarn.dll
   - a 0.3.0 client stops reading before the bool;
   - a 0.4.0 client checks `GetPos() < Size()`, and a 0.3.0 server means no clearing.
 - **The shape.** `LakeShape` is generator heights plus the flood, the same one that draws the water.
-  - The cleared ground is the wet cells, widened 4 m (each cell's own 2 m plus 2 m to the next sample).
+  - The cleared ground is the wet cells, widened by each cell's own 2 m plus `Clearing.LakeBedShore` (0.4.1, default 2,
+    0 to 10, the server's value in multiplayer). The value rides after the lake-bed bool on the lake message, and a 0.4.0
+    server counts as 2. The default reaches the next sample, so the cleared edge lands 0 to 4 m past the real waterline.
+    A player found 4 m a bit much, which is why it became a setting.
   - Merged into maximal rectangles (`LakeBuilder.Rectangles`), then squares along each rectangle's long side, because
     vanilla's `ClearArea` is a square.
   - A zone inside a lake gets 1 area. A shore zone gets tens to hundreds, where one per cell would be thousands. Vanilla
@@ -152,6 +156,21 @@ dotnet build Tarn\Tarn.csproj          # Debug -> Tarn\bin\Debug\Tarn.dll
 
 ## Open items, in order
 
+0. **Setting sync: VERIFIED with a joined player, 2026-10-12** (TarnTest moved to BC 0.10.4, `testing` profile,
+   Release md5 f57a2e75).
+   - On join, the client logged `config sync: the server's settings: DepthScale 0.5, LakeVolume 0.35, BuildRange
+     400, BuildBudgetMs 2, LakeBeds true, LakeBedShore 2`, before the 123 lakes.
+   - The server's `.cfg` was edited live to DepthScale 1.5. The server logged `re-read (its file changed)` and `sent
+     the changed settings to 1 player(s)`; the client logged `the server changed: DepthScale 1.5`.
+   - `tarn depth 0.2` from the player went through `Remote admin ... executed command`. The server saved it and sent
+     it once (its own save did not re-trigger a send), and the client got 0.2. The player's own `.cfg` still read 0.5.
+   - Not yet seen: the player's own values coming back in single player afterwards.
+   - **Found the same day:** a dedicated server shaped `rl001` on the spot, in 245 ms (423 x 578 samples), when a
+     joining player's ghost zones reached it before the warm-up did. It is a one-off pause per big lake when a player
+     arrives next to one. Shaping the lakes near a player's spawn point before the first zone is generated would
+     avoid it.
+   - The same run proved lake-bed clearing of NEW ground on a dedicated server: `lake beds: first zone with a lake bed
+     at (6528, 704), lake 'rl001'`.
 1. **Prove 0.4.0 lake beds in game (built 2026-10-11, NOT yet run).**
    - In single player, on a NEW world, or on unexplored ground, put a lake on the list (`tarn at <x> <z>` from far
      away, or a line in the `.txt`).

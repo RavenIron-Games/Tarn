@@ -1,0 +1,5 @@
+# Keep LF in every checkout: line endings are source bytes, and the deterministic build hashes them,
+# so a CRLF checkout builds a DLL that differs from the shipped one (see RagnaroksWrath CLAUDE.md, 0.27.3).
+* text=auto eol=lf
+*.png binary
+*.dll binary

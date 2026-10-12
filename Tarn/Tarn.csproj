@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>Tarn</AssemblyName>
+    <RootNamespace>RavenIron.Tarn</RootNamespace>
+    <Version>0.4.0</Version>
+    <LangVersion>latest</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Company>Raven Iron</Company>
+    <Product>Tarn</Product>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <Deterministic>true</Deterministic>
+    <DeterministicSourcePaths>true</DeterministicSourcePaths>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SourceRoot Include="$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..'))" />
+  </ItemGroup>
+
+  <!-- Shared libs folder at the repo root, populated by tools\fetch-libs.ps1 (gitignored). -->
+  <PropertyGroup>
+    <LibsDir>$(MSBuildThisFileDirectory)..\libs</LibsDir>
+  </PropertyGroup>
+
+  <Target Name="CheckLibs" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(LibsDir)\assembly_valheim_publicized.dll')"
+           Text="libs\ is missing or empty. Run tools\fetch-libs.ps1 to populate it from your Valheim install." />
+  </Target>
+
+  <ItemGroup>
+    <Reference Include="assembly_valheim">
+      <HintPath>$(LibsDir)\assembly_valheim_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_utils">
+      <HintPath>$(LibsDir)\assembly_utils_publicized.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(LibsDir)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(LibsDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(LibsDir)\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(LibsDir)\UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>$(LibsDir)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(LibsDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

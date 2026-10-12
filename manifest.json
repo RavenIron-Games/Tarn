@@ -1,0 +1,9 @@
+{
+  "name": "Tarn",
+  "version_number": "0.4.0",
+  "website_url": "",
+  "description": "Water at any height: real lakes above sea level, built from a per-world lake list, swimmable, on the map, synced from the server. Also keeps vegetation off a map maker's roads and lake beds.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2351"
+  ]
+}

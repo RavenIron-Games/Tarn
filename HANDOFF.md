@@ -25,7 +25,8 @@ Tarn's input files is in `source\repos\RavenrestMap\v2` (see the last section).
 
 ## Repo
 
-`C:\Users\donfr\source\repos\Tarn`. **This is not a git repo yet.** Commit or push only on the owner's word.
+`C:\Users\donfr\source\repos\Tarn`, pushed to github.com/RavenIron-Games/Tarn (public, like the other released mods)
+since 2026-10-11. The branch is `main`, with a tag per release (`v0.4.0` first). Commit or push only on the owner's word.
 
 | Path | What it is |
 |---|---|
@@ -187,7 +188,7 @@ dotnet build Tarn\Tarn.csproj          # Debug -> Tarn\bin\Debug\Tarn.dll
        runs `Console.TryRunCommand`), so clearbeds has its own request and reply RPCs.
 5. **Placeholder icon.** It needs studio art before any store upload.
 6. **0.4.0 is on Hexium** (uploaded by the owner on 2026-10-11, which answered a public user's question about `.clear`
-   files). It is still not a git repo. Releases go to Hexium (team RavenIronStudios) through `tools\package.ps1`
+   files). It is in git since 2026-10-11 (tag `v0.4.0`). Releases go to Hexium (team RavenIronStudios) through `tools\package.ps1`
    only, never a hand-made zip, and only on the owner's word. The owner uploads.
 
 ## Where the input files come from (the Ravenrest map, `source\repos\RavenrestMap\v2`)

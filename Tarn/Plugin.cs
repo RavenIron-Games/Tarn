@@ -34,7 +34,7 @@ namespace RavenIron.Tarn
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.raveniron.tarn";
-        public const string Version = "0.4.1";
+        public const string Version = "0.4.2";
         internal static ManualLogSource Log;
         private static readonly CultureInfo C = CultureInfo.InvariantCulture;
 

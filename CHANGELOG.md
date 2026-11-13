@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2 (2026-11-01)
+
+Updated due to the Valheim 1.0.21 patch. Rebuilt and checked against Valheim 1.0.21 (network version 41); no code
+changes beyond the version string. The BepInExPack dependency is now 5.4.2360, and the store page's website link is
+https://ravenirongames.com/.
+
 ## 0.4.1 (2026-10-12)
 
 - **How far lake-bed clearing reaches past the water is a setting now:** `Clearing.LakeBedShore`, in metres. The
